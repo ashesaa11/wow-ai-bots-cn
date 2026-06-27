@@ -3,12 +3,12 @@
 ## 项目目标
 搭建 AzerothCore 巫妖王之怒 (3.3.5a) 本地服务端，集成 AI 聊天机器人，用于单机游戏。
 
-## 当前状态：正在编译 PlayerBots + AI 聊天模块
+## 当前状态：编译完成，待启动验证
 - [x] 父仓库 git 初始化
-- [x] 切换到 ZhengPeiRu21/Playerbot 分支（标准 AC 不兼容 PlayerBots）
+- [x] 切换到 liyunfan1223/Playerbot 分支（标准 AC 不兼容 PlayerBots）
 - [x] PlayerBots + mod-ollama-chat 已添加为 submodule
 - [x] DeepSeek API 代理已就绪
-- [ ] 编译中...
+- [x] 编译完成（7个exe，含两个模块）
 - [ ] 验证登录 + AI 聊天
 
 ## 项目路径
@@ -36,13 +36,14 @@
 ## 仓库
 - origin (Fork): `https://github.com/ashesaa11/azerothcore-wotlk`
 - upstream (官方): `https://github.com/azerothcore/azerothcore-wotlk`
-- zhengpeiru (PlayerBots 适配): `https://github.com/ZhengPeiRu21/azerothcore-wotlk`
-- 当前分支: `playerbot-local` (基于 `ZhengPeiRu21/Playerbot`)
+- liyunfan1223 (PlayerBots 适配): `https://github.com/liyunfan1223/azerothcore-wotlk`
+- zhengpeiru (旧PlayerBots): `https://github.com/ZhengPeiRu21/azerothcore-wotlk`
+- 当前分支: `liyunfan-playerbot` (基于 `liyunfan1223` 的 Playerbot 分支)
 
 ## 模块 (git submodule)
 | 模块 | 仓库 | 用途 |
 |------|------|------|
-| mod-playerbots | `github.com/mod-playerbots/mod-playerbots` | BOT 系统 |
+| mod-playerbots | `github.com/liyunfan1223/mod-playerbots` | BOT 系统 |
 | mod-ollama-chat | `github.com/DustinHendrickson/mod-ollama-chat` | LLM AI 聊天 |
 
 ## 代理服务
@@ -68,7 +69,7 @@ account set gmlevel <用户名> 3 -1
 - [x] MySQL 8.4 + 数据库 + 用户
 - [x] CMake 4.3.3
 - [x] OpenSSL 3.5.7 (完整版，非 Light)
-- [x] Boost 1.87.0 + BOOST_ROOT
+- [x] Boost 1.85.0 + BOOST_ROOT (D:/local/boost_1_85_0)
 - [x] Git clone + Fork + remote 配置
 - [x] CMake Configure + Generate
 - [x] VS2022 Build RelWithDebInfo x64 (7个exe)
