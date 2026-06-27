@@ -31,7 +31,7 @@
 | CMake | 4.3.3 | `C:\Program Files\CMake\bin` | — |
 | MySQL | 8.4.9 | `C:\Program Files\MySQL\MySQL Server 8.4` | datadir=`D:\WOW\mysql_data` |
 | OpenSSL | 3.5.7 | `D:\WOW\OpenSSL` | OPENSSL_ROOT_DIR=`D:\WOW\OpenSSL` |
-| Boost | 1.87.0 | `D:\WOW\boost_1_87_0` | BOOST_ROOT=`D:\WOW\boost_1_87_0` |
+| Boost | 1.85.0 | `D:\local\boost_1_85_0` | BOOST_ROOT=`D:\local\boost_1_85_0` |
 
 ## 仓库
 - origin (Fork): `https://github.com/ashesaa11/azerothcore-wotlk`
