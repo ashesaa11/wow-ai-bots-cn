@@ -1,0 +1,35 @@
+# 魔兽世界AI机器人版 — 父仓库忽略规则
+
+# 第三方依赖（体积大，可从官方源重建）
+boost_1_87_0/
+boost.7z
+boost_*.exe
+
+# OpenSSL
+OpenSSL/
+Win64OpenSSL.exe
+
+# 编译产物
+build/
+
+# 数据库运行时数据
+mysql_data/
+
+# 游戏客户端
+World of Warcraft 3.3.5a CN/
+
+# 子仓库（独立 git 管理）
+azerothcore-wotlk/
+
+# Python 缓存
+__pycache__/
+*.pyc
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# 临时文件
+*.tmp
+*.bak
