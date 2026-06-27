@@ -1,13 +1,15 @@
-# AzerothCore WotLK 服务端
+# 魔兽世界AI机器人版 — AzerothCore WotLK 服务端
 
 ## 项目目标
-搭建 AzerothCore 巫妖王之怒 (3.3.5a) 本地服务端，用于单机游戏。
+搭建 AzerothCore 巫妖王之怒 (3.3.5a) 本地服务端，集成 AI 聊天机器人，用于单机游戏。
 
-## 当前状态：✅ 已可运行，待验证登录
-- 服务端编译完成，authserver + worldserver 正常启动
-- 地图数据全部提取完毕 (dbc/maps/vmaps/mmaps)
-- 客户端 realmlist 指向 127.0.0.1
-- 账号通过 worldserver 控制台创建（**禁止 SQL SRP6 方式，已验证不可靠**）
+## 当前状态：正在编译 PlayerBots + AI 聊天模块
+- [x] 父仓库 git 初始化
+- [x] 切换到 ZhengPeiRu21/Playerbot 分支（标准 AC 不兼容 PlayerBots）
+- [x] PlayerBots + mod-ollama-chat 已添加为 submodule
+- [x] DeepSeek API 代理已就绪
+- [ ] 编译中...
+- [ ] 验证登录 + AI 聊天
 
 ## 项目路径
 
@@ -34,7 +36,18 @@
 ## 仓库
 - origin (Fork): `https://github.com/ashesaa11/azerothcore-wotlk`
 - upstream (官方): `https://github.com/azerothcore/azerothcore-wotlk`
-- 当前 commit: `f5b21bb`
+- zhengpeiru (PlayerBots 适配): `https://github.com/ZhengPeiRu21/azerothcore-wotlk`
+- 当前分支: `playerbot-local` (基于 `ZhengPeiRu21/Playerbot`)
+
+## 模块 (git submodule)
+| 模块 | 仓库 | 用途 |
+|------|------|------|
+| mod-playerbots | `github.com/mod-playerbots/mod-playerbots` | BOT 系统 |
+| mod-ollama-chat | `github.com/DustinHendrickson/mod-ollama-chat` | LLM AI 聊天 |
+
+## 代理服务
+- 路径: `D:\WOW\proxy\`
+- 功能: Ollama API → DeepSeek API 桥接
 
 ## 数据库
 - 地址: 127.0.0.1:3306
