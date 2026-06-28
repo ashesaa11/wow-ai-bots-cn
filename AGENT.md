@@ -34,6 +34,7 @@
 | Boost | 1.85.0 | `D:\local\boost_1_85_0` | BOOST_ROOT=`D:\local\boost_1_85_0` |
 
 ## 仓库
+- 项目根: `https://github.com/ashesaa11/wow-ai-bots-cn`
 - origin (Fork): `https://github.com/ashesaa11/azerothcore-wotlk`
 - upstream (官方): `https://github.com/azerothcore/azerothcore-wotlk`
 - liyunfan1223 (PlayerBots 适配): `https://github.com/liyunfan1223/azerothcore-wotlk`
