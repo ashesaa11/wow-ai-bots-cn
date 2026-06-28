@@ -1,155 +1,76 @@
 # 魔兽世界 AI 机器人中文版
 
-基于 AzerothCore WotLK (3.3.5a) 的本地服务端，集成 PlayerBots + LLM AI 对话，中文深度定制。
+AzerothCore WotLK (3.3.5a) 本地服务端，集成 PlayerBots + LLM AI 对话，中文深度定制。
 
 ---
 
-## 1. mod-ollama-chat 编码修复
+## 做了什么
 
-原版模块仅处理 ASCII/UTF-8，WoW zhCN 客户端发送的是 **GBK 编码**。中文字节的 GBK 序列（如「你」=`C4 E3`）不满足 UTF-8 规则，被 `SanitizeUTF8()` 替换为空格，最终在日志和 API 请求中变成 `????`。
+- **GBK→UTF-8 编码修复**：解决 zhCN 客户端中文乱码，使 LLM 正确接收中文输入
+- **中文 Prompt 模板**：重写全部对话模板，国服玩家语气，支持职业简称，移除「15字以内」硬限制
+- **中文角色名 & 公会名**：替换英文名数据库，算法生成 3000 个魔兽风中文名 + 200 个中文公会名
+- **自写 API 代理**：`proxy/server.py` 将 Ollama 格式请求转译为 DeepSeek `/v1/chat/completions`
 
-### 修改位置
+## 环境依赖
 
-**`src/mod-ollama-chat-utilities.h`** — 添加 `ConvertGBKToUTF8()`：
-
-```cpp
-#ifdef _WIN32
-#include <windows.h>
-inline std::string ConvertGBKToUTF8(const std::string& gbkStr) {
-    // 先检测是否包含非 UTF-8 字节（GBK 特征），避免对纯英文做无谓转换
-    bool needsConversion = false;
-    for (size_t i = 0; i < gbkStr.size(); ) {
-        unsigned char c = gbkStr[i];
-        if (c <= 0x7F) { i++; continue; }
-        if ((c & 0xE0) == 0xC0) { i += 2; continue; }
-        if ((c & 0xF0) == 0xE0) { i += 3; continue; }
-        if ((c & 0xF8) == 0xF0) { i += 4; continue; }
-        needsConversion = true; break;
-    }
-    if (!needsConversion) return gbkStr;
-    // GBK(CP936) → UTF-16 → UTF-8
-    int wideLen = MultiByteToWideChar(936, 0, gbkStr.c_str(), -1, nullptr, 0);
-    std::wstring wideStr(wideLen, 0);
-    MultiByteToWideChar(936, 0, gbkStr.c_str(), -1, &wideStr[0], wideLen);
-    int utf8Len = WideCharToMultiByte(CP_UTF8, 0, wideStr.c_str(), -1, nullptr, 0, nullptr, nullptr);
-    std::string utf8Str(utf8Len, 0);
-    WideCharToMultiByte(CP_UTF8, 0, wideStr.c_str(), -1, &utf8Str[0], utf8Len, nullptr, nullptr);
-    if (!utf8Str.empty() && utf8Str.back() == '\0') utf8Str.pop_back();
-    return utf8Str;
-}
-#endif
-```
-
-**`src/mod-ollama-chat_handler.cpp`** — 在 `GenerateBotPrompt()` 开头转换，确保 `fmt::format` 不损坏中文字节：
-
-```cpp
-std::string GenerateBotPrompt(Player* bot, std::string playerMessage, Player* player) {
-    playerMessage = ConvertGBKToUTF8(playerMessage);  // ← 新增
-    // ... 后续通过 SafeFormat(fmt::vformat) 构建 prompt
-}
-```
-
-**`src/mod-ollama-chat_api.cpp`** — 在 `QueryOllamaAPI()` 发送前二次保障：
-
-```cpp
-std::string sanitizedPrompt = SanitizeUTF8(ConvertGBKToUTF8(prompt));  // ← 链式转换
-```
-
-## 2. Prompt 模板中文化
-
-修改 `conf/mod_ollama_chat.conf`（对应 submodule 中 `conf/mod_ollama_chat.conf.dist`），重写全部 prompt 指令：
-
-| 模板 | 用途 | 旧（英文） | 新（中文） |
-|------|------|-----------|-----------|
-| `SystemPrompt` | 全局系统指令 | 无 | 「用国服玩家的语气——自然、口语化、可以吐槽、可以开玩笑。适当使用职业简称…」 |
-| `ChatPromptTemplate` | 玩家对话回复 | "You're a Wrath-era WoW player... Reply in under 15 words" | 「像国服玩家一样自然回复，可以吐槽、开玩笑、用游戏术语。简短为主…就当你是坐在电脑前的真人」 |
-| `RandomChatterPromptTemplate` | 机器人主动闲聊 | 同上英文 | 「用国服玩家语气自然闲聊，可以吐槽、求组、讨论装备」 |
-| `EventChatterPromptTemplate` | 事件触发（升级/死亡/任务） | 同上英文 | 「国服玩家语气回应这个事件，可以吐槽或恭喜」 |
-
-关键改动：
-- 移除硬性「15字以内」限制 → 「简短为主，需要解释可以多说几句」
-- 注入职业简称知识：NQ 奶骑、FQ 防骑、LR 猎人、FS 法师、DZ 盗贼、ZS 战士、MS 牧师、SS 术士、SM 萨满、DK 死骑、XD 小德
-- 角色定位从「NPC 旁白」改为「坐在电脑前的真人玩家」
-
-## 3. 中文角色名 & 公会名数据库替换
-
-通过 Python 脚本以随机组字算法生成中文名，替换 `acore_characters` 库的两个表：
-
-```sql
--- 表结构
-playerbots_names      (name_id INT, name VARCHAR(12), gender TINYINT)
-playerbots_guild_names (name_id INT, name VARCHAR(24))
-```
-
-| 字段 | 旧值 | 新值 |
+| 组件 | 版本 | 说明 |
 |------|------|------|
-| `playerbots_names` 数量 | 100,000（英文） | 3,000（中文，男 1500 + 女 1500） |
-| `playerbots_guild_names` 数量 | 400（英文） | 200（中文） |
+| Visual Studio 2022 | 17 (MSVC 14.44) | C++ 桌面开发工作负载 |
+| CMake | 4.3+ | 需在 PATH 中 |
+| MySQL | 8.4 | 需在 PATH 中 |
+| OpenSSL | 3.5+ | [Win64OpenSSL 完整版](https://slproweb.com/products/Win32OpenSSL.html) |
+| Boost | 1.85 | 预编译版本 |
+| Python | 3.x | 运行代理脚本 |
+| Git | 2.x | 含 submodule 支持 |
 
-生成算法：从角色池中随机拼接 2-3 字组合，男名偏「铁/暗/狂/冰/血/龙/魔/战」系，女名偏「月/星/花/雨/雪/薇/灵/梦」系。
+## 本地搭建教程
 
-示例输出：
-```
-男: 碎石 黑喙雷 雷霜 狼爪 吟雷 魔影 铁骨魔 煞剑 炎赤 钢刃锤
-女: 紫琪 梅雨 铃烟雪 冰萍 霜霜 歌心琳 歌露月 雪蓉 蕾星
-公会: 巨龙远征军 蝎子兄弟会 秘法秩序 烈焰城堡 铁炉圣殿 史诗之盾
-```
+### 1. 克隆项目
 
-## 4. Ollama → DeepSeek API 代理 (`proxy/server.py`)
-
-手写的 HTTP 代理，对接 mod-ollama-chat 的 `/api/generate` 端点与 DeepSeek `/v1/chat/completions`：
-
-```
-worldserver                          proxy:11434                DeepSeek API
-mod-ollama-chat ── POST /api/generate ──→ server.py ── POST /v1/chat/completions ──→ api.deepseek.com
-     {model, prompt, stream:false}          │                  {model, messages, temperature...}
-                                            │                  ← {choices[0].message.content}
-         ← {model, response, done:true} ────┘
+```bash
+git clone --recursive https://github.com/ashesaa11/wow-ai-bots-cn.git
+cd wow-ai-bots-cn
 ```
 
-`config.json` 热配置：
+### 2. 安装依赖
 
-```json
-{
-    "deepseek_api_key": "sk-xxx",
-    "deepseek_model": "deepseek-chat",
-    "listen_host": "127.0.0.1",
-    "listen_port": 11434,
-    "max_tokens": 150,
-    "temperature": 0.8
-}
+- **VS2022**：安装时勾选「使用 C++ 的桌面开发」
+- **CMake**：从 [cmake.org](https://cmake.org/download/) 下载安装
+- **MySQL 8.4**：从 [mysql.com](https://dev.mysql.com/downloads/mysql/) 下载，安装后确保 `mysql.exe` 和 `mysqld.exe` 在 PATH
+- **OpenSSL**：从 [slproweb.com](https://slproweb.com/products/Win32OpenSSL.html) 下载 **Win64OpenSSL（完整版，非 Light）**，安装到 `D:\WOW\OpenSSL`
+- **Boost 1.85**：下载预编译 [boost_1_85_0-msvc-14.3-64.exe](https://sourceforge.net/projects/boost/files/boost-binaries/)，安装到 `D:\local\boost_1_85_0`
+
+### 3. 初始化 MySQL
+
+```bash
+# 初始化数据目录
+mysqld --initialize-insecure --datadir=D:\WOW\mysql_data
+
+# 创建 acore 用户和数据库
+mysqld --defaults-file=D:\WOW\my.ini
+mysql -u root < create_acore_user.sql   # 如无此文件，手动执行下方 SQL
 ```
 
-额外支持 `/api/tags` GET 端点模拟 Ollama 模型列表，使模块启动时正常初始化。
-
-## 5. PlayerBots 集成
-
-- 子模块：`liyunfan1223/mod-playerbots`
-- 配置：`configs/modules/playerbots.conf`（100 账号 / 1000 角色，自动登录）
-- 数据库：`acore_playerbots`（独立库，含 28 张表）
-
-## 项目结构
-
-```
-wow-ai-bots-cn/
-├── AGENT.md                        # 完整开发日志与踩坑记录
-├── README.md
-├── .gitignore                      # 排除 build/ mysql_data/ proxy/config.json
-├── my.ini                          # MySQL 配置
-├── start.bat                       # 一键启动脚本
-├── azerothcore-wotlk/              # submodule: ashesaa11/azerothcore-wotlk (liyunfan-playerbot)
-│   ├── .gitmodules                 # 子模块注册
-│   └── modules/
-│       ├── mod-playerbots/         # submodule: liyunfan1223/mod-playerbots
-│       └── mod-ollama-chat/        # submodule: ashesaa11/mod-ollama-chat
-├── proxy/
-│   ├── server.py                   # HTTP 代理（Ollama → DeepSeek）
-│   └── config.json                 # API key 与参数（.gitignore 排除）
-├── build/                          # CMake 编译输出（.gitignore 排除）
-└── World of Warcraft 3.3.5a CN/   # 游戏客户端（.gitignore 排除）
+手动创建用户（在 mysql 控制台执行）：
+```sql
+CREATE USER 'acore'@'127.0.0.1' IDENTIFIED BY 'acore';
+GRANT ALL PRIVILEGES ON *.* TO 'acore'@'127.0.0.1' WITH GRANT OPTION;
+CREATE DATABASE acore_auth;
+CREATE DATABASE acore_characters;
+CREATE DATABASE acore_world;
+CREATE DATABASE acore_playerbots;
 ```
 
-## 编译
+### 4. 导入数据库
+
+需要 AzerothCore 官方的 SQL 基础数据（由于授权原因不包含在本仓库）：
+
+```bash
+# 下载 TDB_full_world_335.24071_2025_06_14.7z 并解压
+mysql -u root acore_world < TDB_full_world_335.24071_2025_06_14.sql
+```
+
+### 5. CMake 配置 & 编译
 
 ```bash
 cmake -S azerothcore-wotlk -B build -G "Visual Studio 17 2022" -A x64 \
@@ -162,42 +83,105 @@ cmake -S azerothcore-wotlk -B build -G "Visual Studio 17 2022" -A x64 \
 cmake --build build --config RelWithDebInfo --parallel 16
 ```
 
-## 启动
+编译完成后，输出在 `build/bin/RelWithDebInfo/`：
+- `authserver.exe`
+- `worldserver.exe`
+- `map_extractor.exe` / `vmap4_extractor.exe` 等工具
+
+### 6. 提取地图数据
+
+需要将 WoW 3.3.5a zhCN 客户端（`World of Warcraft 3.3.5a CN/`）放在项目根目录，然后：
+
+```bash
+# DBC & Maps
+build\bin\RelWithDebInfo\map_extractor.exe -i "World of Warcraft 3.3.5a CN" -o "build\bin\RelWithDebInfo"
+
+# VMaps
+build\bin\RelWithDebInfo\vmap4_extractor.exe
+build\bin\RelWithDebInfo\vmap4_assembler.exe
+
+# MMaps
+build\bin\RelWithDebInfo\mmaps_generator.exe
+```
+
+### 7. 配置 DeepSeek API Key
+
+编辑 `proxy/config.json`，填入你的 DeepSeek API key：
+
+```json
+{
+    "deepseek_api_key": "sk-你的key",
+    "deepseek_model": "deepseek-chat",
+    "listen_host": "127.0.0.1",
+    "listen_port": 11434
+}
+```
+
+### 8. 启动服务端
+
+**顺序启动 4 个进程**，每个一个终端窗口：
 
 ```bash
 # 终端1: MySQL
 mysqld --defaults-file=D:\WOW\my.ini
 
 # 终端2: DeepSeek 代理
-cd proxy && python server.py
+cd proxy
+python server.py
+# 输出: Ollama→DeepSeek proxy running on http://127.0.0.1:11434
 
 # 终端3: 认证服
-D:\WOW\build\bin\RelWithDebInfo\authserver.exe
+build\bin\RelWithDebInfo\authserver.exe
 
 # 终端4: 世界服（等认证服就绪约10秒）
-D:\WOW\build\bin\RelWithDebInfo\worldserver.exe
+build\bin\RelWithDebInfo\worldserver.exe
+```
 
-# worldserver 控制台创建账号
+世界服首次启动会自动建表、更新数据库、初始化 1000 个中文名机器人。看到 `AC>` 提示符即就绪。
+
+### 9. 登录游戏
+
+1. 确保 WoW 3.3.5a 客户端 `realmlist.wtf` 内容为 `set realmlist 127.0.0.1`
+2. 在 worldserver 控制台创建账号：
+```
 account create admin admin
 account set gmlevel admin 3 -1
 ```
+3. 启动 Wow.exe，用 `admin` / `admin` 登录
 
-## 依赖
+### 10. 测试 AI 聊天
 
-| 组件 | 版本 | 用途 |
-|------|------|------|
-| Visual Studio 2022 | 17 (MSVC 14.44) | C++ 编译 |
-| CMake | 4.3.3 | 构建系统 |
-| MySQL | 8.4.9 | 数据库 |
-| OpenSSL | 3.5.7 | 加密/网络 |
-| Boost | 1.85.0 | C++ 工具库 |
-| Python | 3.x | 代理服务 |
-| WoW 客户端 | 3.3.5a (zhCN) | 游戏 |
+游戏内说话（`/s`）或队伍聊天（`/p`），附近机器人会自动用中文回复。可通过以下命令管理机器人：
+
+```
+.bot add warrior    # 添加战士机器人到队伍
+.bot remove         # 移除所有机器人
+.bot help           # 查看全部命令
+```
+
+修改对话参数参考 `build/bin/RelWithDebInfo/configs/modules/mod_ollama_chat.conf`。
+
+## 项目结构
+
+```
+wow-ai-bots-cn/
+├── AGENT.md                         # 开发日志
+├── .gitignore                       # 排除 build/ mysql_data/ 客户端/ proxy/config.json
+├── azerothcore-wotlk/               # submodule: AzerothCore + PlayerBots (liyunfan-playerbot)
+│   └── modules/
+│       ├── mod-playerbots/          # submodule: 机器人行为系统
+│       └── mod-ollama-chat/         # submodule: LLM 对话（编码修复 + 中文定制）
+├── proxy/
+│   ├── server.py                    # Ollama → DeepSeek HTTP 代理
+│   └── config.json                  # API key 配置（gitignore）
+├── build/                           # CMake 编译输出
+└── World of Warcraft 3.3.5a CN/    # 游戏客户端（自行准备）
+```
 
 ## 相关仓库
 
-| 仓库 | 分支 | 说明 |
-|------|------|------|
-| [wow-ai-bots-cn](https://github.com/ashesaa11/wow-ai-bots-cn) | master | 项目根 |
-| [azerothcore-wotlk](https://github.com/ashesaa11/azerothcore-wotlk) | liyunfan-playerbot | 核心 fork |
-| [mod-ollama-chat](https://github.com/ashesaa11/mod-ollama-chat) | main | AI 对话模块 fork |
+| 仓库 | 说明 |
+|------|------|
+| [wow-ai-bots-cn](https://github.com/ashesaa11/wow-ai-bots-cn) | 项目根 |
+| [azerothcore-wotlk](https://github.com/ashesaa11/azerothcore-wotlk) | 核心引擎 fork |
+| [mod-ollama-chat](https://github.com/ashesaa11/mod-ollama-chat) | AI 对话模块 fork |
