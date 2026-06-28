@@ -2,6 +2,24 @@
 
 AzerothCore WotLK (3.3.5a) 本地服务端，集成 PlayerBots + LLM AI 对话，中文深度定制。
 
+## 引用声明
+
+本项目基于以下开源仓库构建，感谢原作者：
+
+| 上游仓库 | 用途 | 本仓库对应 |
+|------|------|------|
+| [liyunfan1223/azerothcore-wotlk](https://github.com/liyunfan1223/azerothcore-wotlk) | AC 核心（PlayerBot 分支） | [fork](https://github.com/ashesaa11/azerothcore-wotlk) |
+| [liyunfan1223/mod-playerbots](https://github.com/liyunfan1223/mod-playerbots) | 机器人行为系统 | 直接引用，未修改 |
+| [DustinHendrickson/mod-ollama-chat](https://github.com/DustinHendrickson/mod-ollama-chat) | LLM AI 对话模块 | [fork](https://github.com/ashesaa11/mod-ollama-chat)（中文定制） |
+
+## 游戏客户端
+
+下载 WoW 3.3.5a 简体中文客户端（约 16GB）：
+
+👉 [https://www.xspio.com/魔兽世界官方客户端下载/](https://www.xspio.com/%E9%AD%94%E5%85%BD%E4%B8%96%E7%95%8C%E5%AE%98%E6%96%B9%E5%AE%A2%E6%88%B7%E7%AB%AF%E4%B8%8B%E8%BD%BD/)
+
+下载后解压到项目根目录，确保路径为 `World of Warcraft 3.3.5a CN/`。
+
 ---
 
 ## 做了什么
