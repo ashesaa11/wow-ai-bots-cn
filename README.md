@@ -198,6 +198,6 @@ account set gmlevel admin 3 -1
 
 | 仓库 | 分支 | 说明 |
 |------|------|------|
-| [wow-ai-bots-cn](https://github.com/ashesaa11/wow-ai-bots-cn) | main | 项目根 |
+| [wow-ai-bots-cn](https://github.com/ashesaa11/wow-ai-bots-cn) | master | 项目根 |
 | [azerothcore-wotlk](https://github.com/ashesaa11/azerothcore-wotlk) | liyunfan-playerbot | 核心 fork |
 | [mod-ollama-chat](https://github.com/ashesaa11/mod-ollama-chat) | main | AI 对话模块 fork |
