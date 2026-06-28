@@ -1,4 +1,4 @@
-# 魔兽世界 AI 机器人中文版
+# 魔兽世界 AI 机器人中文版(更适合中国宝宝的机器人单机魔兽)
 
 AzerothCore WotLK (3.3.5a) 本地服务端，集成 PlayerBots + LLM AI 对话，中文深度定制。
 
